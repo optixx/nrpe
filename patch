@@ -1,0 +1,58 @@
+--- nrpe-2.13/src/nrpe.c	2011-11-11 18:45:49.000000000 +0000
++++ nrpe-2.13-patched/src/nrpe.c	2014-03-14 18:19:53.420660882 +0000
+@@ -85,7 +85,7 @@ int     show_license=FALSE;
+ int     show_version=FALSE;
+ int     use_inetd=TRUE;
+ int     debug=FALSE;
+-
++int     stay_in_foreground=FALSE;
+ 
+ 
+ 
+@@ -273,6 +273,17 @@ int main(int argc, char **argv){
+ 		/* handle the connection */
+ 		handle_connection(0);
+ 	        }
++        else if (stay_in_foreground==TRUE){
++     
++                 /* drop privileges */
++                 drop_privileges(nrpe_user,nrpe_group);
++     
++                 /* make sure we're not root */
++                 check_privileges();
++     
++                 /* wait for connections */
++                 wait_for_connections();
++            }
+ 
+ 	/* else daemonize and start listening for requests... */
+ 	else if(fork()==0){
+@@ -1846,6 +1857,7 @@ int process_arguments(int argc, char **a
+ 	static struct option long_options[]={
+ 		{"config", required_argument, 0, 'c'},
+ 		{"inetd", no_argument, 0, 'i'},
++        {"foreground", no_argument, 0, 'f'},
+ 		{"daemon", no_argument, 0, 'd'},
+ 		{"no-ssl", no_argument, 0, 'n'},
+ 		{"help", no_argument, 0, 'h'},
+@@ -1858,7 +1870,7 @@ int process_arguments(int argc, char **a
+ 	if(argc<2)
+ 		return ERROR;
+ 
+-	snprintf(optchars,MAX_INPUT_BUFFER,"c:hVldin");
++	snprintf(optchars,MAX_INPUT_BUFFER,"c:hVldinf");
+ 
+ 	while(1){
+ #ifdef HAVE_GETOPT_LONG
+@@ -1894,6 +1906,11 @@ int process_arguments(int argc, char **a
+ 			use_inetd=TRUE;
+ 			have_mode=TRUE;
+ 			break;
++        case 'f':
++            stay_in_foreground=TRUE;
++			use_inetd=FALSE;
++			have_mode=TRUE;
++            break;
+ 		case 'n':
+ 			use_ssl=FALSE;
+ 			break;
