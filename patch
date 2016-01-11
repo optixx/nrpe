@@ -1,58 +1,65 @@
---- nrpe-2.13/src/nrpe.c	2011-11-11 18:45:49.000000000 +0000
-+++ nrpe-2.13-patched/src/nrpe.c	2014-03-14 18:19:53.420660882 +0000
-@@ -85,7 +85,7 @@ int     show_license=FALSE;
- int     show_version=FALSE;
- int     use_inetd=TRUE;
+--- nrpe.c	2013-09-06 11:27:13.000000000 -0400
++++ nrpe_foreground	2016-01-11 14:37:17.537530252 -0500
+@@ -99,6 +99,8 @@
  int     debug=FALSE;
--
-+int     stay_in_foreground=FALSE;
+ int     use_src=FALSE; /* Define parameter for SRC option */
  
++int	stay_in_foreground=FALSE;
++
  
+ void complete_SSL_shutdown( SSL *);
  
-@@ -273,6 +273,17 @@ int main(int argc, char **argv){
- 		/* handle the connection */
+@@ -167,6 +169,7 @@
+ 		printf(" -4            = use ipv4 only\n");
+ 		printf(" -6            = use ipv6 only\n");
+ 		printf(" <mode>        = One of the following operating modes:\n");  
++		printf("   -f          =    Run in the foreground\n");
+ 		printf("   -i          =    Run as a service under inetd or xinetd\n");
+ 		printf("   -d          =    Run as a standalone daemon\n");
+ 		/* Updates help section to indicate how to start under SRC on AIX */
+@@ -292,6 +295,16 @@
  		handle_connection(0);
  	        }
-+        else if (stay_in_foreground==TRUE){
-+     
-+                 /* drop privileges */
-+                 drop_privileges(nrpe_user,nrpe_group);
-+     
-+                 /* make sure we're not root */
-+                 check_privileges();
-+     
-+                 /* wait for connections */
-+                 wait_for_connections();
-+            }
  
- 	/* else daemonize and start listening for requests... */
- 	else if(fork()==0){
-@@ -1846,6 +1857,7 @@ int process_arguments(int argc, char **a
++	/* if we're running in the foreground... */
++	else if (stay_in_foreground==TRUE){
++		/* drop privileges */
++		drop_privileges(nrpe_user,nrpe_group);
++		/* make sure we're not root */
++		check_privileges();
++		/* wait for connections */
++		wait_for_connections();
++		}
++
+ 	/* if we're running under SRC... 
+ 	   we don't fork but does drop-privileges*/
+ 	else if (use_src==TRUE){
+@@ -2083,6 +2096,7 @@
  	static struct option long_options[]={
  		{"config", required_argument, 0, 'c'},
  		{"inetd", no_argument, 0, 'i'},
-+        {"foreground", no_argument, 0, 'f'},
- 		{"daemon", no_argument, 0, 'd'},
- 		{"no-ssl", no_argument, 0, 'n'},
- 		{"help", no_argument, 0, 'h'},
-@@ -1858,7 +1870,7 @@ int process_arguments(int argc, char **a
++		{"foreground", no_argument, 0, 'f'},
+ 		/* To compatibility between short and long options but not used on AIX */
+ 		{"src", no_argument, 0, 's'},
+ 		{"4", no_argument, 0, '4'},
+@@ -2099,7 +2113,7 @@
  	if(argc<2)
  		return ERROR;
  
--	snprintf(optchars,MAX_INPUT_BUFFER,"c:hVldin");
-+	snprintf(optchars,MAX_INPUT_BUFFER,"c:hVldinf");
+-	snprintf(optchars,MAX_INPUT_BUFFER,"c:hVldi46n");
++	snprintf(optchars,MAX_INPUT_BUFFER,"c:hVldi46nf");
  
  	while(1){
  #ifdef HAVE_GETOPT_LONG
-@@ -1894,6 +1906,11 @@ int process_arguments(int argc, char **a
+@@ -2135,6 +2149,11 @@
  			use_inetd=TRUE;
  			have_mode=TRUE;
  			break;
-+        case 'f':
-+            stay_in_foreground=TRUE;
++		case 'f':
++			stay_in_foreground=TRUE;
 +			use_inetd=FALSE;
-+			have_mode=TRUE;
-+            break;
- 		case 'n':
- 			use_ssl=FALSE;
++			have_mode=FALSE;
++			break;
+ 		case '4':
+ 			address_family=AF_INET;
  			break;
